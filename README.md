@@ -1,10 +1,19 @@
-# 👑 El Señor del 3 - Android App
+# El Señor del 3 - Android App
 
-¡Bienvenido! Este es el repositorio de **El Señor del 3**, una aplicación móvil nativa para Android basada en el popular juego social de dados. El proyecto está diseñado bajo una arquitectura limpia y moderna, sirviendo como mi primera experiencia práctica en el desarrollo móvil nativo.
+Bienvenido.
+Este es el repositorio de **El Señor del 3**, una aplicación móvil nativa para Android basada en 
+un juego revolucionario para las previas con tus amigos. Alguna vez has pensado: esta previa está muerta
+no hay nadie borracho ni pinta que lo vaya a haber, nos vamos a discoteca y estamos todos tiesos,
+te traigo una solución, una luz al final del túnel de la previa más aburrida de tu vida, que todo el 
+mundo se recargue el cubata porque estamos a punto de darle la vuelta a la tortilla.
+
+El proyecto está diseñado bajo una 
+arquitectura limpia y moderna, sirviendo como mi primera experiencia práctica en el desarrollo 
+móvil nativo. No me juzgues mucho.
 
 ---
 
-## 🛠️ Stack Tecnológico & Arquitectura
+## Stack Tecnológico & Arquitectura
 
 Para este desarrollo decidí aplicar los estándares de la industria móvil actual, dejando de lado las tecnologías heredadas (como Java o vistas tradicionales en XML):
 
@@ -18,7 +27,7 @@ Para este desarrollo decidí aplicar los estándares de la industria móvil actu
 
 ---
 
-## 🎲 Mecánica del Juego (Modo Clásico)
+## Mecánica del Juego (Modo Clásico)
 
 El juego se divide en dos macro-etapas secuenciales gestionadas mediante una máquina de estados en el ViewModel:
 
@@ -37,7 +46,7 @@ El juego se divide en dos macro-etapas secuenciales gestionadas mediante una má
 
 ---
 
-## 📂 Estructura del Proyecto
+## Estructura del Proyecto
 
 El código fuente sigue una distribución modularizada por capas para asegurar la escalabilidad hacia futuros modos de juego:
 

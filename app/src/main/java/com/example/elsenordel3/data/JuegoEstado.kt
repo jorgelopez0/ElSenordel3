@@ -1,25 +1,25 @@
 package com.example.elsenordel3.data
 
 enum class ModoJuego {
-    CLASICO,
-    VIDAS,
-    RELAMPAGO
+    NORMAL,
+    HARDCORE
 }
 
 enum class EtapaPartida {
-    CONFIGURACION,       // Pantalla inicial para setear reglas/jugadores
-    BUSCANDO_SENOR,      // Primera ronda: 1 dado para ver quién es el Señor del 3
-    RONDA_PARTIDA        // Partida normal: 2 dados con repeticiones
+    CONFIGURACION,
+    BUSCANDO_SENOR,
+    RONDA_PARTIDA
 }
 
 data class Jugador(
     val nombre: String,
     val esSenorDel3: Boolean = false,
-    val puntos: Int = 0 // Útil para futuros modos
+    val numerosAsignados: List<Int> = emptyList(), // Para el modo Hardcore
+    val vecesBebidas: Int = 0
 )
 
 data class JuegoEstado(
-    val modo: ModoJuego = ModoJuego.CLASICO,
+    val modo: ModoJuego = ModoJuego.NORMAL,
     val etapa: EtapaPartida = EtapaPartida.CONFIGURACION,
     val jugadores: List<Jugador> = emptyList(),
     val jugadorActualIndex: Int = 0,
@@ -27,7 +27,21 @@ data class JuegoEstado(
     val dado2: Int = 1,
     val historialAcciones: List<String> = emptyList(),
 
-    // Configuraciones de partida
-    val permitirMultiplesSenores: Boolean = true,
-    val senorElegidoEnEstaRonda: Boolean = false // Flag auxiliar para el modo de un solo Señor
+    // Contadores en partida
+    val tiradasJugadorActual: Int = 1,
+    val vecesHaBebidoSenorDel3: Int = 0,
+
+    // Control interno para Fase 1 Normal
+    val senorElegidoEnEstaRonda: Boolean = false,
+
+    // Control interno para Fase 1 Hardcore:
+    // Cada jugador tira UNA VEZ y ese es su número. Se rota por todos.
+    // Este flag indica si la ronda inicial ha completado todos los jugadores.
+    val hardcoreFase1Completada: Boolean = false,
+
+    // Contador de tiradas en fase 2 Hardcore (máx 3 por turno)
+    val tiradasEnTurnoActual: Int = 0,
+
+    // Señal para reproducir el audio ZZZ al cambiar de turno
+    val reproducirAudioZZZ: Boolean = false
 )
