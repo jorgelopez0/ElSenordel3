@@ -6,6 +6,7 @@ enum class ModoJuego {
 }
 
 enum class EtapaPartida {
+    TUTORIAL,
     CONFIGURACION,
     BUSCANDO_SENOR,
     RONDA_PARTIDA
@@ -20,7 +21,7 @@ data class Jugador(
 
 data class JuegoEstado(
     val modo: ModoJuego = ModoJuego.NORMAL,
-    val etapa: EtapaPartida = EtapaPartida.CONFIGURACION,
+    val etapa: EtapaPartida = EtapaPartida.TUTORIAL,
     val jugadores: List<Jugador> = emptyList(),
     val jugadorActualIndex: Int = 0,
     val dado1: Int = 1,
@@ -34,14 +35,12 @@ data class JuegoEstado(
     // Control interno para Fase 1 Normal
     val senorElegidoEnEstaRonda: Boolean = false,
 
-    // Control interno para Fase 1 Hardcore:
-    // Cada jugador tira UNA VEZ y ese es su número. Se rota por todos.
-    // Este flag indica si la ronda inicial ha completado todos los jugadores.
+    // Control interno para Fase 1 Hardcore
     val hardcoreFase1Completada: Boolean = false,
 
     // Contador de tiradas en fase 2 Hardcore (máx 3 por turno)
     val tiradasEnTurnoActual: Int = 0,
 
-    // Señal para reproducir el audio ZZZ al cambiar de turno
+    // Señal para reproducir el audio ZZZ (solo al recibir el móvil en fase de 2 dados)
     val reproducirAudioZZZ: Boolean = false
 )

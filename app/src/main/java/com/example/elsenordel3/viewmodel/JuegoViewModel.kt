@@ -16,6 +16,11 @@ class JuegoViewModel : ViewModel() {
     private val _estado = MutableStateFlow(JuegoEstado())
     val estado: StateFlow<JuegoEstado> = _estado.asStateFlow()
 
+    // --- TUTORIAL ---
+    fun saltarTutorial() {
+        _estado.update { it.copy(etapa = EtapaPartida.CONFIGURACION) }
+    }
+
     // --- MÉTODOS DE CONFIGURACIÓN ---
     fun agregarJugador(nombre: String) {
         if (nombre.isNotBlank()) {
@@ -36,9 +41,9 @@ class JuegoViewModel : ViewModel() {
         if (estadoActual.jugadores.size < 2) return
 
         val mensajeInicial = if (estadoActual.modo == ModoJuego.NORMAL) {
-            "¡Comienza el Modo Normal! Tiren 1 dado para buscar al Señor del 3."
+            "Comienza el Modo Normal. Tirad 1 dado para buscar al Señor del 3."
         } else {
-            "¡Comienza el Modo Hardcore! Cada jugador tira 1 dado. Ese será su número."
+            "Comienza el Modo Hardcore. Cada jugador tira 1 dado. Ese será su número."
         }
 
         _estado.update {
@@ -63,6 +68,7 @@ class JuegoViewModel : ViewModel() {
         if (estadoActual.jugadores.isEmpty()) return
 
         when (estadoActual.etapa) {
+            EtapaPartida.TUTORIAL -> { /* Nada */ }
             EtapaPartida.CONFIGURACION -> { /* Nada */ }
             EtapaPartida.BUSCANDO_SENOR -> if (estadoActual.modo == ModoJuego.NORMAL)
                 jugarFaseBusquedaNormal(estadoActual)
@@ -77,6 +83,7 @@ class JuegoViewModel : ViewModel() {
     }
 
     // --- FASE 1: BUSCANDO AL SEÑOR (NORMAL) ---
+    // En esta fase NUNCA suena el ZZZ (solo es de la fase de 2 dados).
     private fun jugarFaseBusquedaNormal(estadoActual: JuegoEstado) {
         val dado = Random.nextInt(1, 7)
         val jugadorActual = estadoActual.jugadores[estadoActual.jugadorActualIndex]
@@ -87,7 +94,7 @@ class JuegoViewModel : ViewModel() {
         if (dado == 3) {
             yaHaySenor = true
             nuevosJugadores[estadoActual.jugadorActualIndex] = jugadorActual.copy(esSenorDel3 = true)
-            nuevoHistorial.add("¡${jugadorActual.nombre} sacó un 3 y es SEÑOR DEL 3! 👑")
+            nuevoHistorial.add("${jugadorActual.nombre} sacó un 3 y es el SEÑOR DEL 3.")
         } else {
             nuevoHistorial.add("${jugadorActual.nombre} sacó un $dado.")
         }
@@ -96,39 +103,38 @@ class JuegoViewModel : ViewModel() {
 
         if (esUltimoJugador) {
             if (yaHaySenor) {
-                nuevoHistorial.add("--- ¡Comienza la partida con 2 dados! ---")
+                nuevoHistorial.add("Comienza la partida con 2 dados.")
                 _estado.update {
                     it.copy(
                         dado1 = dado, jugadores = nuevosJugadores, jugadorActualIndex = 0,
                         etapa = EtapaPartida.RONDA_PARTIDA, historialAcciones = nuevoHistorial,
                         tiradasJugadorActual = 1, tiradasEnTurnoActual = 0,
-                        reproducirAudioZZZ = true
+                        reproducirAudioZZZ = true // El primer jugador recibe el móvil para 2 dados
                     )
                 }
             } else {
-                nuevoHistorial.add("Nadie fue Señor del 3. ¡Siguiente ronda de calentamiento!")
+                nuevoHistorial.add("Nadie fue Señor del 3. Otra ronda de calentamiento.")
                 _estado.update {
                     it.copy(
                         dado1 = dado, jugadorActualIndex = 0, historialAcciones = nuevoHistorial,
-                        senorElegidoEnEstaRonda = false, reproducirAudioZZZ = true
+                        senorElegidoEnEstaRonda = false, reproducirAudioZZZ = false
                     )
                 }
             }
         } else {
-            val siguienteIndex = estadoActual.jugadorActualIndex + 1
             _estado.update {
                 it.copy(
                     dado1 = dado, senorElegidoEnEstaRonda = yaHaySenor,
-                    jugadores = nuevosJugadores, jugadorActualIndex = siguienteIndex,
+                    jugadores = nuevosJugadores, jugadorActualIndex = estadoActual.jugadorActualIndex + 1,
                     historialAcciones = nuevoHistorial,
-                    reproducirAudioZZZ = true // Pasar el móvil al siguiente
+                    reproducirAudioZZZ = false
                 )
             }
         }
     }
 
     // --- FASE 1: BUSCANDO NÚMEROS (HARDCORE) ---
-    // Cada jugador tira UNA SOLA VEZ. El número que saque es su número.
+    // Cada jugador tira UNA SOLA VEZ. Sin ZZZ (no es fase de 2 dados).
     private fun jugarFaseBusquedaHardcore(estadoActual: JuegoEstado) {
         val dado = Random.nextInt(1, 7)
         val index = estadoActual.jugadorActualIndex
@@ -136,30 +142,29 @@ class JuegoViewModel : ViewModel() {
         val nuevosJugadores = estadoActual.jugadores.toMutableList()
         val nuevoHistorial = estadoActual.historialAcciones.toMutableList()
 
-        // El número obtenido es el número del jugador
         nuevosJugadores[index] = jugadorActual.copy(numerosAsignados = listOf(dado))
-        nuevoHistorial.add("${jugadorActual.nombre} obtiene el número $dado. ¡Ese es su número!")
+        nuevoHistorial.add("${jugadorActual.nombre} obtiene el número $dado. Ese es su número.")
 
         val esUltimoJugador = index == estadoActual.jugadores.lastIndex
 
         if (esUltimoJugador) {
-            nuevoHistorial.add("--- ¡Todos tienen su número! ¡Comienza la partida! ---")
+            nuevoHistorial.add("Todos tienen su número. Comienza la partida.")
             _estado.update {
                 it.copy(
                     dado1 = dado, jugadores = nuevosJugadores, jugadorActualIndex = 0,
                     etapa = EtapaPartida.RONDA_PARTIDA, historialAcciones = nuevoHistorial,
                     tiradasJugadorActual = 1, tiradasEnTurnoActual = 0,
-                    hardcoreFase1Completada = true, reproducirAudioZZZ = true
+                    hardcoreFase1Completada = true,
+                    reproducirAudioZZZ = true // El primer jugador recibe el móvil para 2 dados
                 )
             }
         } else {
-            val siguienteIndex = index + 1
             _estado.update {
                 it.copy(
                     dado1 = dado, jugadores = nuevosJugadores,
-                    jugadorActualIndex = siguienteIndex,
+                    jugadorActualIndex = index + 1,
                     historialAcciones = nuevoHistorial,
-                    reproducirAudioZZZ = true // Pasar el móvil al siguiente
+                    reproducirAudioZZZ = false
                 )
             }
         }
@@ -175,47 +180,47 @@ class JuegoViewModel : ViewModel() {
         val nuevoHistorial = estadoActual.historialAcciones.toMutableList()
         var vecesSenorBebio = estadoActual.vecesHaBebidoSenorDel3
 
-        nuevoHistorial.add("🎲 ${jugadorActual.nombre} tiró [$d1, $d2] (Suma: $suma).")
+        nuevoHistorial.add("${jugadorActual.nombre} tiró [$d1, $d2] (Suma: $suma).")
 
         var pasoAlgo = false
 
         if (d1 == 3 || d2 == 3) {
-            nuevoHistorial.add("🍺 ¡Salió un 3! El Señor del 3 bebe.")
+            nuevoHistorial.add("Salió un 3. El Señor del 3 bebe.")
             vecesSenorBebio++
             pasoAlgo = true
         }
         if (suma == 7) {
             val indexAnterior = (indexActual - 1 + estadoActual.jugadores.size) % estadoActual.jugadores.size
-            nuevoHistorial.add("👈 ¡Suma 7! Bebe ${estadoActual.jugadores[indexAnterior].nombre}.")
+            nuevoHistorial.add("Suma 7. Bebe ${estadoActual.jugadores[indexAnterior].nombre}.")
             pasoAlgo = true
         }
         if (suma == 8) {
-            nuevoHistorial.add("💩 ¡Suma 8! Todos dicen 'Mierda', el último bebe.")
+            nuevoHistorial.add("Suma 8. Todos dicen 'Mierda', el último bebe.")
             pasoAlgo = true
         }
         if (suma == 9) {
             val indexSiguiente = (indexActual + 1) % estadoActual.jugadores.size
-            nuevoHistorial.add("👉 ¡Suma 9! Bebe ${estadoActual.jugadores[indexSiguiente].nombre}.")
+            nuevoHistorial.add("Suma 9. Bebe ${estadoActual.jugadores[indexSiguiente].nombre}.")
             pasoAlgo = true
         }
         if (d1 == d2) {
-            nuevoHistorial.add("👯 ¡Dobles ($d1)! ${jugadorActual.nombre} reparte tragos.")
+            nuevoHistorial.add("Dobles ($d1). ${jugadorActual.nombre} reparte tragos.")
             pasoAlgo = true
         }
 
         if (pasoAlgo) {
-            nuevoHistorial.add("🔄 ${jugadorActual.nombre} conserva el turno.")
+            nuevoHistorial.add("${jugadorActual.nombre} conserva el turno.")
             _estado.update {
                 it.copy(
                     dado1 = d1, dado2 = d2, historialAcciones = nuevoHistorial,
                     vecesHaBebidoSenorDel3 = vecesSenorBebio,
                     tiradasJugadorActual = it.tiradasJugadorActual + 1,
                     tiradasEnTurnoActual = it.tiradasEnTurnoActual + 1,
-                    reproducirAudioZZZ = false
+                    reproducirAudioZZZ = false // Sigue el mismo jugador, no suena
                 )
             }
         } else {
-            nuevoHistorial.add("⏭️ Nada especial. ¡Pasa el móvil!")
+            nuevoHistorial.add("Nada especial. Pasa el móvil.")
             _estado.update {
                 it.copy(
                     dado1 = d1, dado2 = d2, historialAcciones = nuevoHistorial,
@@ -223,7 +228,7 @@ class JuegoViewModel : ViewModel() {
                     jugadorActualIndex = (indexActual + 1) % it.jugadores.size,
                     tiradasJugadorActual = 1,
                     tiradasEnTurnoActual = 0,
-                    reproducirAudioZZZ = true
+                    reproducirAudioZZZ = true // El siguiente jugador recibe el móvil
                 )
             }
         }
@@ -238,21 +243,20 @@ class JuegoViewModel : ViewModel() {
         val nuevoHistorial = estadoActual.historialAcciones.toMutableList()
         val nuevasTiradasEnTurno = estadoActual.tiradasEnTurnoActual + 1
 
-        nuevoHistorial.add("🎲 ${jugadorActual.nombre} tiró [$d1, $d2]. (Tirada $nuevasTiradasEnTurno/3 del turno)")
+        nuevoHistorial.add("${jugadorActual.nombre} tiró [$d1, $d2]. (Tirada $nuevasTiradasEnTurno/3)")
         var pasoAlgo = false
 
         estadoActual.jugadores.forEach { jug ->
             if (jug.numerosAsignados.any { it == d1 || it == d2 }) {
-                nuevoHistorial.add("🍺 ¡Salió el número de ${jug.nombre}! Bebe.")
+                nuevoHistorial.add("Salió el número de ${jug.nombre}. Bebe.")
                 pasoAlgo = true
             }
         }
 
-        // En Hardcore, el jugador solo puede tirar MAX 3 veces por turno
         val forzarCambioTurno = nuevasTiradasEnTurno >= 3
 
         if (pasoAlgo && !forzarCambioTurno) {
-            nuevoHistorial.add("🔄 ${jugadorActual.nombre} conserva el turno.")
+            nuevoHistorial.add("${jugadorActual.nombre} conserva el turno.")
             _estado.update {
                 it.copy(
                     dado1 = d1, dado2 = d2, historialAcciones = nuevoHistorial,
@@ -263,9 +267,9 @@ class JuegoViewModel : ViewModel() {
             }
         } else {
             if (forzarCambioTurno) {
-                nuevoHistorial.add("⏱️ 3 tiradas completadas. ¡Pasa el móvil!")
+                nuevoHistorial.add("3 tiradas completadas. Pasa el móvil.")
             } else {
-                nuevoHistorial.add("⏭️ Ningún número. ¡Pasa el móvil!")
+                nuevoHistorial.add("Ningún número. Pasa el móvil.")
             }
             _estado.update {
                 it.copy(
@@ -273,7 +277,7 @@ class JuegoViewModel : ViewModel() {
                     jugadorActualIndex = (indexActual + 1) % it.jugadores.size,
                     tiradasJugadorActual = 1,
                     tiradasEnTurnoActual = 0,
-                    reproducirAudioZZZ = true
+                    reproducirAudioZZZ = true // El siguiente jugador recibe el móvil
                 )
             }
         }
