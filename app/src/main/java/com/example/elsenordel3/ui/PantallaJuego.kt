@@ -1,6 +1,5 @@
 package com.example.elsenordel3.ui
 
-import android.content.Context
 import android.media.MediaPlayer
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
@@ -42,11 +41,11 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.math.sqrt
 import kotlin.random.Random
 
 // ─── Paleta ───────────────────────────────────────────────────────────────────
 private val ColorAzulFondo = Color(0xFF1F6FEB)   // azul intenso (pantalla de configuración)
-private val ColorRosaFondo = Color(0xFFF5277E)   // rosa fuerte (pantalla de dados)
 private val ColorAzulClaro = Color(0xFFAEDDF5)
 private val ColorRosaClaro = Color(0xFFFBC7DE)
 private val ColorRosaFuerte = Color(0xFFFF4D8D)  // acento
@@ -58,14 +57,6 @@ private val ColorTarjeta = Color(0xFFFFFFFF)
 @Composable
 fun PantallaJuego(viewModel: JuegoViewModel = viewModel()) {
     val estado by viewModel.estado.collectAsState()
-    val context = LocalContext.current
-
-    LaunchedEffect(estado.reproducirAudioZZZ) {
-        if (estado.reproducirAudioZZZ) {
-            reproducirAudioZZZ(context)
-            viewModel.audioZZZConsumido()
-        }
-    }
 
     when (estado.etapa) {
         EtapaPartida.TUTORIAL -> PantallaInstruccionesGenerales(viewModel)
@@ -73,17 +64,6 @@ fun PantallaJuego(viewModel: JuegoViewModel = viewModel()) {
         EtapaPartida.INSTRUCCIONES_MODO -> PantallaInstruccionesModo(viewModel)
         else -> PantallaMesa(viewModel)
     }
-}
-
-private fun reproducirAudioZZZ(context: Context) {
-    try {
-        val resId = context.resources.getIdentifier("zzz", "raw", context.packageName)
-        if (resId != 0) {
-            val mp = MediaPlayer.create(context, resId)
-            mp?.setOnCompletionListener { it.release() }
-            mp?.start()
-        }
-    } catch (_: Exception) { }
 }
 
 private fun fondoClaro() = Brush.verticalGradient(listOf(ColorAzulClaro, ColorRosaClaro))
@@ -369,30 +349,66 @@ fun PantallaInstruccionesModo(viewModel: JuegoViewModel) {
 @Composable
 fun PantallaMesa(viewModel: JuegoViewModel) {
     val estado by viewModel.estado.collectAsState()
+    val context = LocalContext.current
     val jugadorActual = estado.jugadores.getOrNull(estado.jugadorActualIndex)
 
     var lanzando by remember { mutableStateOf(false) }
+    var bloqueadoPorAudio by remember { mutableStateOf(false) }
     var historialExpandido by remember { mutableStateOf(false) }
     var lanzamientoId by remember { mutableIntStateOf(0) }
+    val mpRef = remember { mutableStateOf<MediaPlayer?>(null) }
 
     val nivelLocura = estado.vecesHaBebidoSenorDel3
 
+    // Audio ZZZ: suena entero, y bloquea el tirar hasta que termina
+    LaunchedEffect(estado.reproducirAudioZZZ) {
+        if (estado.reproducirAudioZZZ) {
+            viewModel.audioZZZConsumido()
+            try {
+                val resId = context.resources.getIdentifier("zzz", "raw", context.packageName)
+                if (resId != 0) {
+                    mpRef.value?.release()
+                    val mp = MediaPlayer.create(context, resId)
+                    if (mp != null) {
+                        bloqueadoPorAudio = true
+                        mpRef.value = mp
+                        mp.setOnCompletionListener {
+                            it.release()
+                            if (mpRef.value === it) mpRef.value = null
+                            bloqueadoPorAudio = false
+                        }
+                        mp.start()
+                    }
+                }
+            } catch (_: Exception) {
+                bloqueadoPorAudio = false
+            }
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            mpRef.value?.release()
+            mpRef.value = null
+        }
+    }
+
+    val ocupado = lanzando || bloqueadoPorAudio
     val onTirar = {
-        if (!lanzando) {
+        if (!ocupado) {
             lanzamientoId++
             lanzando = true
             viewModel.lanzarDados()
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(ColorRosaFondo)) {
+    Box(modifier = Modifier.fillMaxSize().background(fondoClaro())) {
         Column(modifier = Modifier.fillMaxSize()) {
 
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .pointerInput(lanzando) {
+                    .pointerInput(ocupado) {
                         detectTapGestures(onTap = { onTirar() })
                     },
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -401,7 +417,7 @@ fun PantallaMesa(viewModel: JuegoViewModel) {
                     Box(modifier = Modifier.weight(0.40f).fillMaxWidth()) {
                         DadoGigante(estado.dado1, lanzamientoId, 0, nivelLocura)
                     }
-                    ZonaSecundaria(estado, jugadorActual, lanzando, Modifier.weight(0.20f))
+                    ZonaSecundaria(estado, jugadorActual, ocupado, Modifier.weight(0.20f))
                     Box(modifier = Modifier.weight(0.40f).fillMaxWidth()) {
                         DadoGigante(estado.dado2, lanzamientoId, 1, nivelLocura)
                     }
@@ -409,7 +425,7 @@ fun PantallaMesa(viewModel: JuegoViewModel) {
                     Box(modifier = Modifier.weight(0.55f).fillMaxWidth()) {
                         DadoGigante(estado.dado1, lanzamientoId, 0, nivelLocura)
                     }
-                    ZonaSecundaria(estado, jugadorActual, lanzando, Modifier.weight(0.25f))
+                    ZonaSecundaria(estado, jugadorActual, ocupado, Modifier.weight(0.25f))
                     Spacer(modifier = Modifier.weight(0.20f))
                 }
             }
@@ -430,7 +446,7 @@ fun PantallaMesa(viewModel: JuegoViewModel) {
 fun ZonaSecundaria(
     estado: com.example.elsenordel3.data.JuegoEstado,
     jugadorActual: com.example.elsenordel3.data.Jugador?,
-    lanzando: Boolean,
+    ocupado: Boolean,
     modifier: Modifier
 ) {
     Column(
@@ -479,15 +495,15 @@ fun ZonaSecundaria(
                     text = "${jug.nombre}$sufijo",
                     fontSize = if (esTurno) 17.sp else 12.sp,
                     fontWeight = if (esTurno) FontWeight.Black else FontWeight.Normal,
-                    color = if (esTurno) Color.White else Color.White.copy(alpha = 0.55f),
+                    color = if (esTurno) ColorRosaFuerte else ColorTextoSuave.copy(alpha = 0.7f),
                     modifier = Modifier.scale(escala)
                 )
             }
         }
 
-        if (!lanzando) {
+        if (!ocupado) {
             Spacer(modifier = Modifier.height(6.dp))
-            Text("Toca para tirar", fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.Bold)
+            Text("Toca para tirar", fontSize = 12.sp, color = ColorTextoSuave, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -523,7 +539,7 @@ fun HistorialZona(
             Text(
                 text = if (expandido) "Ocultar historial" else "Ver historial (${estado.historialAcciones.size})",
                 fontSize = 11.sp,
-                color = Color.White,
+                color = ColorTextoSuave,
                 fontWeight = FontWeight.Bold
             )
         }
@@ -762,7 +778,40 @@ fun DadoGigante(
     }
 }
 
-// ─── Geometría del cubo (8 caras como 4 esquinas TL,TR,BR,BL en coords ±1) ────
+// ─── Construye un cuadrilátero con las esquinas redondeadas ───────────────────
+private fun puntoHacia(desde: Offset, hacia: Offset, dist: Float): Offset {
+    val dx = hacia.x - desde.x
+    val dy = hacia.y - desde.y
+    val len = sqrt(dx * dx + dy * dy)
+    if (len < 0.0001f) return desde
+    val t = (dist / len).coerceAtMost(0.5f)
+    return Offset(desde.x + dx * t, desde.y + dy * t)
+}
+
+private fun caraRedondeada(pts: Array<Offset>): Path {
+    val n = pts.size
+    var minBorde = Float.MAX_VALUE
+    for (i in 0 until n) {
+        val a = pts[i]; val b = pts[(i + 1) % n]
+        val len = sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y))
+        if (len < minBorde) minBorde = len
+    }
+    val r = minBorde * 0.18f
+    val path = Path()
+    for (i in 0 until n) {
+        val cur = pts[i]
+        val prev = pts[(i - 1 + n) % n]
+        val next = pts[(i + 1) % n]
+        val pIn = puntoHacia(cur, prev, r)
+        val pOut = puntoHacia(cur, next, r)
+        if (i == 0) path.moveTo(pIn.x, pIn.y) else path.lineTo(pIn.x, pIn.y)
+        path.quadraticBezierTo(cur.x, cur.y, pOut.x, pOut.y)
+    }
+    path.close()
+    return path
+}
+
+// ─── Geometría del cubo (8 caras como 4 esquinas TL,TR,BR,BL en coords +/-1) ────
 private val CARAS: Array<Array<FloatArray>> = arrayOf(
     // 0 front (+Z)
     arrayOf(floatArrayOf(-1f, 1f, 1f), floatArrayOf(1f, 1f, 1f), floatArrayOf(1f, -1f, 1f), floatArrayOf(-1f, -1f, 1f)),
@@ -800,7 +849,7 @@ fun DadoCubo3D(
 ) {
     Canvas(modifier = modifier) {
         val minDim = size.minDimension
-        val half = minDim / 2f * 0.78f
+        val half = minDim / 2f * 0.70f   // ~10% más pequeño que antes
         val cx = size.width / 2f
         val cy = size.height / 2f
         val d = half * 4.6f   // distancia de cámara (perspectiva)
@@ -812,7 +861,7 @@ fun DadoCubo3D(
         val cya = cos(ry).toFloat(); val sya = sin(ry).toFloat()
         val cza = cos(rz).toFloat(); val sza = sin(rz).toFloat()
 
-        // Rota un punto local (±1) y devuelve (x,y,z) escalado por half
+        // Rota un punto local (+-1) y devuelve (x,y,z) escalado por half
         fun rota(p: FloatArray): FloatArray {
             var x = p[0]; var y = p[1]; var z = p[2]
             // Rx
@@ -870,9 +919,7 @@ fun DadoCubo3D(
             val brillo = (0.80f + 0.20f * zNorm).coerceIn(0.6f, 1f)
             val colorCara = Color(brillo, brillo, brillo, 1f)
 
-            val cara = Path().apply {
-                moveTo(p0.x, p0.y); lineTo(p1.x, p1.y); lineTo(p2.x, p2.y); lineTo(p3.x, p3.y); close()
-            }
+            val cara = caraRedondeada(arrayOf(p0, p1, p2, p3))
             drawPath(cara, color = colorCara)
             drawPath(cara, color = Color(0x33000000), style = Stroke(width = 2.5f))
 

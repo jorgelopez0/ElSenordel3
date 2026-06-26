@@ -121,7 +121,7 @@ class JuegoViewModel : ViewModel() {
                         dado1 = dado, jugadores = nuevosJugadores, jugadorActualIndex = 0,
                         etapa = EtapaPartida.RONDA_PARTIDA, historialAcciones = nuevoHistorial,
                         tiradasJugadorActual = 1, tiradasEnTurnoActual = 0,
-                        reproducirAudioZZZ = true
+                        reproducirAudioZZZ = false // El inicio no dispara el ZZZ
                     )
                 }
             } else {
@@ -166,7 +166,7 @@ class JuegoViewModel : ViewModel() {
                     etapa = EtapaPartida.RONDA_PARTIDA, historialAcciones = nuevoHistorial,
                     tiradasJugadorActual = 1, tiradasEnTurnoActual = 0,
                     hardcoreFase1Completada = true,
-                    reproducirAudioZZZ = true
+                    reproducirAudioZZZ = false // El inicio no dispara el ZZZ
                 )
             }
         } else {
@@ -232,6 +232,9 @@ class JuegoViewModel : ViewModel() {
             }
         } else {
             nuevoHistorial.add("Nada especial. Pasa el móvil.")
+            // El jugador hizo estadoActual.tiradasJugadorActual tiradas en este turno.
+            // El ZZZ solo suena si tiró menos de 2 veces (pasó casi al recibir el móvil).
+            val sonarZZZ = estadoActual.tiradasJugadorActual < 2
             _estado.update {
                 it.copy(
                     dado1 = d1, dado2 = d2, historialAcciones = nuevoHistorial,
@@ -239,7 +242,7 @@ class JuegoViewModel : ViewModel() {
                     jugadorActualIndex = (indexActual + 1) % it.jugadores.size,
                     tiradasJugadorActual = 1,
                     tiradasEnTurnoActual = 0,
-                    reproducirAudioZZZ = true
+                    reproducirAudioZZZ = sonarZZZ
                 )
             }
         }
@@ -282,13 +285,15 @@ class JuegoViewModel : ViewModel() {
             } else {
                 nuevoHistorial.add("Ningún número. Pasa el móvil.")
             }
+            // El jugador hizo nuevasTiradasEnTurno tiradas. ZZZ solo si fueron menos de 2.
+            val sonarZZZ = nuevasTiradasEnTurno < 2
             _estado.update {
                 it.copy(
                     dado1 = d1, dado2 = d2, historialAcciones = nuevoHistorial,
                     jugadorActualIndex = (indexActual + 1) % it.jugadores.size,
                     tiradasJugadorActual = 1,
                     tiradasEnTurnoActual = 0,
-                    reproducirAudioZZZ = true
+                    reproducirAudioZZZ = sonarZZZ
                 )
             }
         }
