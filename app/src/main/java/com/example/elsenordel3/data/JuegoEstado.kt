@@ -6,8 +6,9 @@ enum class ModoJuego {
 }
 
 enum class EtapaPartida {
-    TUTORIAL,
-    CONFIGURACION,
+    TUTORIAL,            // Instrucciones generales (antes de meter nombres)
+    CONFIGURACION,       // Meter nombres y elegir modo
+    INSTRUCCIONES_MODO,  // Instrucciones especificas del modo elegido
     BUSCANDO_SENOR,
     RONDA_PARTIDA
 }

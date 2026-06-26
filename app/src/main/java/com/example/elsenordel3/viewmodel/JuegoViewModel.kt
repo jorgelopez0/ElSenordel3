@@ -16,7 +16,8 @@ class JuegoViewModel : ViewModel() {
     private val _estado = MutableStateFlow(JuegoEstado())
     val estado: StateFlow<JuegoEstado> = _estado.asStateFlow()
 
-    // --- TUTORIAL ---
+    // --- NAVEGACIÓN DE PANTALLAS DE INSTRUCCIONES ---
+    /** Instrucciones generales -> pantalla de configuración */
     fun saltarTutorial() {
         _estado.update { it.copy(etapa = EtapaPartida.CONFIGURACION) }
     }
@@ -36,7 +37,15 @@ class JuegoViewModel : ViewModel() {
         _estado.update { it.copy(modo = modo) }
     }
 
+    /** Configuración -> instrucciones del modo elegido */
     fun iniciarPartida() {
+        val estadoActual = _estado.value
+        if (estadoActual.jugadores.size < 2) return
+        _estado.update { it.copy(etapa = EtapaPartida.INSTRUCCIONES_MODO) }
+    }
+
+    /** Instrucciones del modo -> empieza la partida de verdad */
+    fun empezarPartida() {
         val estadoActual = _estado.value
         if (estadoActual.jugadores.size < 2) return
 
@@ -51,7 +60,10 @@ class JuegoViewModel : ViewModel() {
                 etapa = EtapaPartida.BUSCANDO_SENOR,
                 historialAcciones = listOf(mensajeInicial),
                 jugadorActualIndex = 0,
+                tiradasJugadorActual = 1,
                 tiradasEnTurnoActual = 0,
+                vecesHaBebidoSenorDel3 = 0,
+                senorElegidoEnEstaRonda = false,
                 reproducirAudioZZZ = false
             )
         }
@@ -68,8 +80,9 @@ class JuegoViewModel : ViewModel() {
         if (estadoActual.jugadores.isEmpty()) return
 
         when (estadoActual.etapa) {
-            EtapaPartida.TUTORIAL -> { /* Nada */ }
-            EtapaPartida.CONFIGURACION -> { /* Nada */ }
+            EtapaPartida.TUTORIAL -> { }
+            EtapaPartida.CONFIGURACION -> { }
+            EtapaPartida.INSTRUCCIONES_MODO -> { }
             EtapaPartida.BUSCANDO_SENOR -> if (estadoActual.modo == ModoJuego.NORMAL)
                 jugarFaseBusquedaNormal(estadoActual)
             else
@@ -83,7 +96,6 @@ class JuegoViewModel : ViewModel() {
     }
 
     // --- FASE 1: BUSCANDO AL SEÑOR (NORMAL) ---
-    // En esta fase NUNCA suena el ZZZ (solo es de la fase de 2 dados).
     private fun jugarFaseBusquedaNormal(estadoActual: JuegoEstado) {
         val dado = Random.nextInt(1, 7)
         val jugadorActual = estadoActual.jugadores[estadoActual.jugadorActualIndex]
@@ -109,7 +121,7 @@ class JuegoViewModel : ViewModel() {
                         dado1 = dado, jugadores = nuevosJugadores, jugadorActualIndex = 0,
                         etapa = EtapaPartida.RONDA_PARTIDA, historialAcciones = nuevoHistorial,
                         tiradasJugadorActual = 1, tiradasEnTurnoActual = 0,
-                        reproducirAudioZZZ = true // El primer jugador recibe el móvil para 2 dados
+                        reproducirAudioZZZ = true
                     )
                 }
             } else {
@@ -134,7 +146,6 @@ class JuegoViewModel : ViewModel() {
     }
 
     // --- FASE 1: BUSCANDO NÚMEROS (HARDCORE) ---
-    // Cada jugador tira UNA SOLA VEZ. Sin ZZZ (no es fase de 2 dados).
     private fun jugarFaseBusquedaHardcore(estadoActual: JuegoEstado) {
         val dado = Random.nextInt(1, 7)
         val index = estadoActual.jugadorActualIndex
@@ -155,7 +166,7 @@ class JuegoViewModel : ViewModel() {
                     etapa = EtapaPartida.RONDA_PARTIDA, historialAcciones = nuevoHistorial,
                     tiradasJugadorActual = 1, tiradasEnTurnoActual = 0,
                     hardcoreFase1Completada = true,
-                    reproducirAudioZZZ = true // El primer jugador recibe el móvil para 2 dados
+                    reproducirAudioZZZ = true
                 )
             }
         } else {
@@ -216,7 +227,7 @@ class JuegoViewModel : ViewModel() {
                     vecesHaBebidoSenorDel3 = vecesSenorBebio,
                     tiradasJugadorActual = it.tiradasJugadorActual + 1,
                     tiradasEnTurnoActual = it.tiradasEnTurnoActual + 1,
-                    reproducirAudioZZZ = false // Sigue el mismo jugador, no suena
+                    reproducirAudioZZZ = false
                 )
             }
         } else {
@@ -228,7 +239,7 @@ class JuegoViewModel : ViewModel() {
                     jugadorActualIndex = (indexActual + 1) % it.jugadores.size,
                     tiradasJugadorActual = 1,
                     tiradasEnTurnoActual = 0,
-                    reproducirAudioZZZ = true // El siguiente jugador recibe el móvil
+                    reproducirAudioZZZ = true
                 )
             }
         }
@@ -277,7 +288,7 @@ class JuegoViewModel : ViewModel() {
                     jugadorActualIndex = (indexActual + 1) % it.jugadores.size,
                     tiradasJugadorActual = 1,
                     tiradasEnTurnoActual = 0,
-                    reproducirAudioZZZ = true // El siguiente jugador recibe el móvil
+                    reproducirAudioZZZ = true
                 )
             }
         }
