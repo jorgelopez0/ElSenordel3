@@ -193,37 +193,41 @@ class JuegoViewModel : ViewModel() {
 
         nuevoHistorial.add("${jugadorActual.nombre} tiró [$d1, $d2] (Suma: $suma).")
 
-        var pasoAlgo = false
+        // Condiciones de turno: 3 en algún dado, suma 3/7/8/9, o dobles
+        val salioTres = d1 == 3 || d2 == 3
+        val sonDobles = d1 == d2
+        val sumaBrindis = suma in 7..9
+        val sumaTres = suma == 3
+        val conservaTurno = salioTres || sonDobles || sumaBrindis || sumaTres
 
-        if (d1 == 3 || d2 == 3) {
-            nuevoHistorial.add("Salió un 3. El Señor del 3 bebe.")
+        if (salioTres) {
             vecesSenorBebio++
-            pasoAlgo = true
+            nuevoHistorial.add("Salió un 3. El Señor del 3 bebe.")
+        }
+        if (sumaTres) {
+            nuevoHistorial.add("Suma 3.")
         }
         if (suma == 7) {
             val indexAnterior = (indexActual - 1 + estadoActual.jugadores.size) % estadoActual.jugadores.size
             nuevoHistorial.add("Suma 7. Bebe ${estadoActual.jugadores[indexAnterior].nombre}.")
-            pasoAlgo = true
         }
         if (suma == 8) {
             nuevoHistorial.add("Suma 8. Todos dicen 'Mierda', el último bebe.")
-            pasoAlgo = true
         }
         if (suma == 9) {
             val indexSiguiente = (indexActual + 1) % estadoActual.jugadores.size
             nuevoHistorial.add("Suma 9. Bebe ${estadoActual.jugadores[indexSiguiente].nombre}.")
-            pasoAlgo = true
         }
-        if (d1 == d2) {
+        if (sonDobles) {
             nuevoHistorial.add("Dobles ($d1). ${jugadorActual.nombre} reparte tragos.")
-            pasoAlgo = true
         }
 
-        if (pasoAlgo) {
+        if (conservaTurno) {
             nuevoHistorial.add("${jugadorActual.nombre} conserva el turno.")
             _estado.update {
                 it.copy(
-                    dado1 = d1, dado2 = d2, historialAcciones = nuevoHistorial,
+                    dado1 = d1, dado2 = d2,
+                    historialAcciones = nuevoHistorial,
                     vecesHaBebidoSenorDel3 = vecesSenorBebio,
                     tiradasJugadorActual = it.tiradasJugadorActual + 1,
                     tiradasEnTurnoActual = it.tiradasEnTurnoActual + 1,
@@ -232,12 +236,11 @@ class JuegoViewModel : ViewModel() {
             }
         } else {
             nuevoHistorial.add("Nada especial. Pasa el móvil.")
-            // El jugador hizo estadoActual.tiradasJugadorActual tiradas en este turno.
-            // El ZZZ solo suena si tiró menos de 2 veces (pasó casi al recibir el móvil).
             val sonarZZZ = estadoActual.tiradasJugadorActual < 2
             _estado.update {
                 it.copy(
-                    dado1 = d1, dado2 = d2, historialAcciones = nuevoHistorial,
+                    dado1 = d1, dado2 = d2,
+                    historialAcciones = nuevoHistorial,
                     vecesHaBebidoSenorDel3 = vecesSenorBebio,
                     jugadorActualIndex = (indexActual + 1) % it.jugadores.size,
                     tiradasJugadorActual = 1,
@@ -245,6 +248,16 @@ class JuegoViewModel : ViewModel() {
                     reproducirAudioZZZ = sonarZZZ
                 )
             }
+        }
+    }
+
+    fun terminarPartida() {
+        _estado.update { s ->
+            JuegoEstado(
+                jugadores = s.jugadores.map { it.copy(esSenorDel3 = false, numerosAsignados = emptyList()) },
+                modo = s.modo,
+                etapa = EtapaPartida.CONFIGURACION
+            )
         }
     }
 

@@ -6,9 +6,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,15 +17,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -45,18 +43,26 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 // ─── Paleta ───────────────────────────────────────────────────────────────────
-private val ColorAzulFondo = Color(0xFF1F6FEB)   // azul intenso (pantalla de configuración)
-private val ColorAzulClaro = Color(0xFFAEDDF5)
-private val ColorRosaClaro = Color(0xFFFBC7DE)
-private val ColorRosaFuerte = Color(0xFFFF4D8D)  // acento
-private val ColorAzulFuerte = Color(0xFF2D74E8)  // acento
-private val ColorTextoOscuro = Color(0xFF20364F)
-private val ColorTextoSuave = Color(0xFF6A7E96)
-private val ColorTarjeta = Color(0xFFFFFFFF)
+private val ColorRosaFuerte = Color(0xFFFF4D8D)
+private val ColorRosaOscuro = Color(0xFFD63070)
+private val ColorTarjeta   = Color(0x28FFFFFF)   // blanco 16% opacidad — separación sutil
+private val ColorTextoOscuro = Color(0xFF20364F) // sigue usándose en texto sobre tarjeta blanca
+private val ColorTextoSuave  = Color(0xFF6A7E96)
 
 @Composable
 fun PantallaJuego(viewModel: JuegoViewModel = viewModel()) {
     val estado by viewModel.estado.collectAsState()
+    var mostrarSplash by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        delay(1000)
+        mostrarSplash = false
+    }
+
+    if (mostrarSplash) {
+        PantallaSplash()
+        return
+    }
 
     when (estado.etapa) {
         EtapaPartida.TUTORIAL -> PantallaInstruccionesGenerales(viewModel)
@@ -66,14 +72,28 @@ fun PantallaJuego(viewModel: JuegoViewModel = viewModel()) {
     }
 }
 
-private fun fondoClaro() = Brush.verticalGradient(listOf(ColorAzulClaro, ColorRosaClaro))
+@Composable
+private fun PantallaSplash() {
+    Box(
+        modifier = Modifier.fillMaxSize().background(ColorRosaFuerte),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "El Señor del 3",
+            fontSize = 36.sp,
+            fontWeight = FontWeight.Black,
+            color = Color.White,
+            letterSpacing = 1.sp
+        )
+    }
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 // PANTALLA 1 — INSTRUCCIONES GENERALES (antes de meter nombres)
 // ════════════════════════════════════════════════════════════════════════════
 @Composable
 fun PantallaInstruccionesGenerales(viewModel: JuegoViewModel) {
-    Box(modifier = Modifier.fillMaxSize().background(fondoClaro())) {
+    Box(modifier = Modifier.fillMaxSize().background(ColorRosaFuerte)) {
         Column(
             modifier = Modifier.fillMaxSize().padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -83,11 +103,11 @@ fun PantallaInstruccionesGenerales(viewModel: JuegoViewModel) {
                 text = "INSTRUCCIONES",
                 fontSize = 36.sp,
                 fontWeight = FontWeight.Black,
-                color = ColorTextoOscuro,
+                color = Color.White,
                 letterSpacing = 2.sp,
                 textAlign = TextAlign.Center
             )
-            Text("El Señor del 3", fontSize = 16.sp, color = ColorRosaFuerte, fontWeight = FontWeight.Bold)
+            Text("El Señor del 3", fontSize = 16.sp, color = Color.White.copy(alpha = 0.85f), fontWeight = FontWeight.Bold)
 
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -106,7 +126,7 @@ fun PantallaInstruccionesGenerales(viewModel: JuegoViewModel) {
             Button(
                 onClick = { viewModel.saltarTutorial() },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = ColorRosaFuerte),
+                colors = ButtonDefaults.buttonColors(containerColor = ColorRosaOscuro),
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Text("EMPEZAR", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
@@ -124,13 +144,13 @@ fun PasoTutorial(numero: Int, texto: String) {
     ) {
         Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
-                modifier = Modifier.size(34.dp).clip(CircleShape).background(ColorAzulFuerte),
+                modifier = Modifier.size(34.dp).clip(CircleShape).background(ColorRosaOscuro),
                 contentAlignment = Alignment.Center
             ) {
                 Text("$numero", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp)
             }
             Spacer(modifier = Modifier.width(12.dp))
-            Text(texto, fontSize = 14.sp, color = ColorTextoOscuro)
+            Text(texto, fontSize = 14.sp, color = Color.White)
         }
     }
 }
@@ -143,7 +163,7 @@ fun PantallaConfiguracion(viewModel: JuegoViewModel) {
     val estado by viewModel.estado.collectAsState()
     var nombreInput by remember { mutableStateOf("") }
 
-    Box(modifier = Modifier.fillMaxSize().background(ColorAzulFondo)) {
+    Box(modifier = Modifier.fillMaxSize().background(ColorRosaFuerte)) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -166,27 +186,27 @@ fun PantallaConfiguracion(viewModel: JuegoViewModel) {
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("JUGADORES (${estado.jugadores.size})", fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold, color = ColorAzulFuerte, letterSpacing = 2.sp)
-                    Text("En orden de tirada", fontSize = 11.sp, color = ColorTextoSuave)
+                        fontWeight = FontWeight.Bold, color = Color.White, letterSpacing = 2.sp)
+                    Text("En orden de tirada", fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f))
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(
                             value = nombreInput,
                             onValueChange = { nombreInput = it },
-                            label = { Text("Nombre", color = ColorTextoSuave) },
+                            label = { Text("Nombre", color = Color.White.copy(alpha = 0.7f)) },
                             singleLine = true,
                             modifier = Modifier.weight(1f),
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = ColorTextoOscuro,
-                                unfocusedTextColor = ColorTextoOscuro,
-                                focusedBorderColor = ColorRosaFuerte,
-                                unfocusedBorderColor = ColorTextoSuave.copy(alpha = 0.4f),
-                                cursorColor = ColorRosaFuerte
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = Color.White,
+                                unfocusedBorderColor = Color.White.copy(alpha = 0.4f),
+                                cursorColor = Color.White
                             )
                         )
                         Button(
                             onClick = { viewModel.agregarJugador(nombreInput); nombreInput = "" },
-                            colors = ButtonDefaults.buttonColors(containerColor = ColorRosaFuerte),
+                            colors = ButtonDefaults.buttonColors(containerColor = ColorRosaOscuro),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text("+", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
@@ -200,9 +220,9 @@ fun PantallaConfiguracion(viewModel: JuegoViewModel) {
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("${i + 1}. ${jug.nombre}", color = ColorTextoOscuro, fontSize = 15.sp)
+                                Text("${i + 1}. ${jug.nombre}", color = Color.White, fontSize = 15.sp)
                                 TextButton(onClick = { viewModel.quitarJugador(jug) }) {
-                                    Text("Quitar", color = ColorRosaFuerte, fontSize = 13.sp)
+                                    Text("Quitar", color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp)
                                 }
                             }
                         }
@@ -220,7 +240,7 @@ fun PantallaConfiguracion(viewModel: JuegoViewModel) {
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("MODO DE JUEGO", fontSize = 11.sp, fontWeight = FontWeight.Bold,
-                        color = ColorAzulFuerte, letterSpacing = 2.sp)
+                        color = Color.White, letterSpacing = 2.sp)
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         ModoBoton("Normal", estado.modo == ModoJuego.NORMAL, Modifier.weight(1f)) {
@@ -230,12 +250,6 @@ fun PantallaConfiguracion(viewModel: JuegoViewModel) {
                             viewModel.setModoJuego(ModoJuego.HARDCORE)
                         }
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    val descripcion = if (estado.modo == ModoJuego.NORMAL)
-                        "Busca al Señor del 3. Sumas 7/8/9 o un 3 mantienen el turno."
-                    else
-                        "Cada jugador tiene su número. 3 tiradas por turno."
-                    Text(descripcion, fontSize = 12.sp, color = ColorTextoSuave)
                 }
             }
 
@@ -246,7 +260,7 @@ fun PantallaConfiguracion(viewModel: JuegoViewModel) {
                 enabled = estado.jugadores.size >= 2,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = ColorRosaFuerte,
+                    containerColor = ColorRosaOscuro,
                     disabledContainerColor = Color.White.copy(alpha = 0.3f)
                 ),
                 shape = RoundedCornerShape(16.dp)
@@ -268,13 +282,13 @@ fun ModoBoton(texto: String, seleccionado: Boolean, modifier: Modifier, onClick:
         onClick = onClick,
         modifier = modifier.height(52.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (seleccionado) ColorRosaFuerte else ColorAzulClaro
+            containerColor = if (seleccionado) ColorRosaOscuro else Color.White.copy(alpha = 0.20f)
         ),
         shape = RoundedCornerShape(12.dp)
     ) {
         Text(
             texto,
-            color = if (seleccionado) Color.White else ColorTextoOscuro,
+            color = Color.White,
             fontWeight = if (seleccionado) FontWeight.Bold else FontWeight.Normal,
             fontSize = 14.sp
         )
@@ -289,7 +303,7 @@ fun PantallaInstruccionesModo(viewModel: JuegoViewModel) {
     val estado by viewModel.estado.collectAsState()
     val esNormal = estado.modo == ModoJuego.NORMAL
 
-    Box(modifier = Modifier.fillMaxSize().background(fondoClaro())) {
+    Box(modifier = Modifier.fillMaxSize().background(ColorRosaFuerte)) {
         Column(
             modifier = Modifier.fillMaxSize().padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -299,14 +313,14 @@ fun PantallaInstruccionesModo(viewModel: JuegoViewModel) {
                 text = "INSTRUCCIONES",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Black,
-                color = ColorTextoOscuro,
+                color = Color.White,
                 letterSpacing = 2.sp,
                 textAlign = TextAlign.Center
             )
             Text(
                 text = if (esNormal) "Modo Normal" else "Modo Hardcore",
                 fontSize = 18.sp,
-                color = ColorRosaFuerte,
+                color = Color.White.copy(alpha = 0.85f),
                 fontWeight = FontWeight.Bold
             )
 
@@ -334,7 +348,7 @@ fun PantallaInstruccionesModo(viewModel: JuegoViewModel) {
             Button(
                 onClick = { viewModel.empezarPartida() },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = ColorRosaFuerte),
+                colors = ButtonDefaults.buttonColors(containerColor = ColorRosaOscuro),
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Text("EMPEZAR", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
@@ -350,15 +364,17 @@ fun PantallaInstruccionesModo(viewModel: JuegoViewModel) {
 fun PantallaMesa(viewModel: JuegoViewModel) {
     val estado by viewModel.estado.collectAsState()
     val context = LocalContext.current
-    val jugadorActual = estado.jugadores.getOrNull(estado.jugadorActualIndex)
 
     var lanzando by remember { mutableStateOf(false) }
     var bloqueadoPorAudio by remember { mutableStateOf(false) }
-    var historialExpandido by remember { mutableStateOf(false) }
     var lanzamientoId by remember { mutableIntStateOf(0) }
+    var jugadorMostradoIndex by remember { mutableIntStateOf(estado.jugadorActualIndex) }
+    val jugadorActual = estado.jugadores.getOrNull(jugadorMostradoIndex)
     val mpRef = remember { mutableStateOf<MediaPlayer?>(null) }
 
     val nivelLocura = estado.vecesHaBebidoSenorDel3
+    var dado1TerminadoId by remember { mutableIntStateOf(-1) }
+    var dado2TerminadoId by remember { mutableIntStateOf(-1) }
 
     // Audio ZZZ: suena entero, y bloquea el tirar hasta que termina
     LaunchedEffect(estado.reproducirAudioZZZ) {
@@ -395,13 +411,27 @@ fun PantallaMesa(viewModel: JuegoViewModel) {
     val ocupado = lanzando || bloqueadoPorAudio
     val onTirar = {
         if (!ocupado) {
+            jugadorMostradoIndex = estado.jugadorActualIndex
             lanzamientoId++
             lanzando = true
             viewModel.lanzarDados()
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(fondoClaro())) {
+    val esDosD = estado.etapa == EtapaPartida.RONDA_PARTIDA
+    val dadosTerminadosId = if (
+        dado1TerminadoId == lanzamientoId && (!esDosD || dado2TerminadoId == lanzamientoId)
+    ) lanzamientoId else -1
+
+    LaunchedEffect(dadosTerminadosId) {
+        if (dadosTerminadosId > 0) {
+            delay(2000)
+            jugadorMostradoIndex = estado.jugadorActualIndex
+            lanzando = false
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize().background(ColorRosaFuerte)) {
         Column(modifier = Modifier.fillMaxSize()) {
 
             Column(
@@ -414,30 +444,28 @@ fun PantallaMesa(viewModel: JuegoViewModel) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 if (estado.etapa == EtapaPartida.RONDA_PARTIDA) {
-                    Box(modifier = Modifier.weight(0.40f).fillMaxWidth()) {
-                        DadoGigante(estado.dado1, lanzamientoId, 0, nivelLocura)
+                    Box(modifier = Modifier.weight(0.42f).fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
+                        DadoGigante(estado.dado1, lanzamientoId, 0, nivelLocura) { dado1TerminadoId = lanzamientoId }
                     }
-                    ZonaSecundaria(estado, jugadorActual, ocupado, Modifier.weight(0.20f))
-                    Box(modifier = Modifier.weight(0.40f).fillMaxWidth()) {
-                        DadoGigante(estado.dado2, lanzamientoId, 1, nivelLocura)
+                    ZonaSecundaria(estado, jugadorActual, ocupado, Modifier.weight(0.16f))
+                    Box(modifier = Modifier.weight(0.42f).fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
+                        DadoGigante(estado.dado2, lanzamientoId, 1, nivelLocura) { dado2TerminadoId = lanzamientoId }
                     }
                 } else {
-                    Box(modifier = Modifier.weight(0.55f).fillMaxWidth()) {
-                        DadoGigante(estado.dado1, lanzamientoId, 0, nivelLocura)
+                    Box(modifier = Modifier.weight(0.60f).fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
+                        DadoGigante(estado.dado1, lanzamientoId, 0, nivelLocura) { dado1TerminadoId = lanzamientoId }
                     }
-                    ZonaSecundaria(estado, jugadorActual, ocupado, Modifier.weight(0.25f))
-                    Spacer(modifier = Modifier.weight(0.20f))
+                    ZonaSecundaria(estado, jugadorActual, ocupado, Modifier.weight(0.22f))
+                    Spacer(modifier = Modifier.weight(0.18f))
                 }
             }
 
-            HistorialZona(estado, historialExpandido) { historialExpandido = !historialExpandido }
-        }
-    }
-
-    LaunchedEffect(lanzamientoId) {
-        if (lanzamientoId > 0) {
-            delay(1300)
-            lanzando = false
+            TextButton(
+                onClick = { viewModel.terminarPartida() },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+            ) {
+                Text("Terminar partida", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
+            }
         }
     }
 }
@@ -456,35 +484,21 @@ fun ZonaSecundaria(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
-        ) {
-            ContadorChip(if (estado.modo == ModoJuego.NORMAL) "Modo Normal" else "Modo Hardcore")
-            if (estado.etapa == EtapaPartida.RONDA_PARTIDA) {
-                val t = if (estado.modo == ModoJuego.HARDCORE)
-                    "Tirada ${estado.tiradasEnTurnoActual + 1}/3"
-                else
-                    "Tirada ${estado.tiradasJugadorActual}"
-                ContadorChip(t)
-            }
-            if (estado.modo == ModoJuego.NORMAL) {
-                ContadorChip("Señor del 3 bebió: ${estado.vecesHaBebidoSenorDel3}")
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically
         ) {
             estado.jugadores.forEach { jug ->
                 val esTurno = jug == jugadorActual
-                val sufijo = when {
-                    estado.modo == ModoJuego.NORMAL && jug.esSenorDel3 -> " 3"
-                    estado.modo == ModoJuego.HARDCORE && jug.numerosAsignados.isNotEmpty() ->
-                        " ${jug.numerosAsignados.joinToString(",")}"
-                    else -> ""
+                val texto = buildAnnotatedString {
+                    append(jug.nombre)
+                    when {
+                        estado.modo == ModoJuego.NORMAL && jug.esSenorDel3 -> {
+                            append(" ")
+                            withStyle(SpanStyle(fontWeight = FontWeight.Black)) { append("3") }
+                        }
+                        estado.modo == ModoJuego.HARDCORE && jug.numerosAsignados.isNotEmpty() ->
+                            append(" ${jug.numerosAsignados.joinToString(",")}")
+                    }
                 }
                 val escala by animateFloatAsState(
                     targetValue = if (esTurno) 1f else 0.8f,
@@ -492,10 +506,10 @@ fun ZonaSecundaria(
                     label = "escala_nombre"
                 )
                 Text(
-                    text = "${jug.nombre}$sufijo",
-                    fontSize = if (esTurno) 17.sp else 12.sp,
+                    text = texto,
+                    fontSize = if (esTurno) 18.sp else 12.sp,
                     fontWeight = if (esTurno) FontWeight.Black else FontWeight.Normal,
-                    color = if (esTurno) ColorRosaFuerte else ColorTextoSuave.copy(alpha = 0.7f),
+                    color = if (esTurno) Color.White else Color.White.copy(alpha = 0.45f),
                     modifier = Modifier.scale(escala)
                 )
             }
@@ -503,79 +517,11 @@ fun ZonaSecundaria(
 
         if (!ocupado) {
             Spacer(modifier = Modifier.height(6.dp))
-            Text("Toca para tirar", fontSize = 12.sp, color = ColorTextoSuave, fontWeight = FontWeight.Bold)
+            Text("Toca para tirar", fontSize = 12.sp, color = Color.White.copy(alpha = 0.6f), fontWeight = FontWeight.Bold)
         }
     }
 }
 
-@Composable
-fun HistorialZona(
-    estado: com.example.elsenordel3.data.JuegoEstado,
-    expandido: Boolean,
-    onToggle: () -> Unit
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        if (estado.historialAcciones.isNotEmpty()) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = ColorTarjeta),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Text(
-                    text = estado.historialAcciones.last(),
-                    modifier = Modifier.padding(10.dp).fillMaxWidth(),
-                    fontSize = 13.sp,
-                    color = ColorTextoOscuro,
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-        }
-
-        TextButton(onClick = onToggle, modifier = Modifier.height(30.dp)) {
-            Text(
-                text = if (expandido) "Ocultar historial" else "Ver historial (${estado.historialAcciones.size})",
-                fontSize = 11.sp,
-                color = ColorTextoSuave,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        if (expandido) {
-            val listState = rememberLazyListState()
-            LaunchedEffect(estado.historialAcciones.size) {
-                if (estado.historialAcciones.isNotEmpty()) {
-                    listState.animateScrollToItem(estado.historialAcciones.lastIndex)
-                }
-            }
-            Card(
-                modifier = Modifier.fillMaxWidth().height(120.dp),
-                colors = CardDefaults.cardColors(containerColor = ColorTarjeta),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                LazyColumn(modifier = Modifier.padding(8.dp), state = listState, reverseLayout = true) {
-                    items(estado.historialAcciones.reversed()) { accion ->
-                        Text(accion, fontSize = 11.sp, color = ColorTextoSuave,
-                            modifier = Modifier.padding(vertical = 2.dp))
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ContadorChip(texto: String) {
-    Box(
-        modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(ColorTarjeta)
-            .padding(horizontal = 10.dp, vertical = 5.dp)
-    ) {
-        Text(texto, fontSize = 11.sp, color = ColorTextoOscuro, fontWeight = FontWeight.Medium)
-    }
-}
 
 // ════════════════════════════════════════════════════════════════════════════
 // SISTEMA DE ANIMACIÓN — cuanto más alto el contador del Señor del 3,
@@ -583,13 +529,14 @@ fun ContadorChip(texto: String) {
 // ════════════════════════════════════════════════════════════════════════════
 private enum class EstiloDado {
     NORMAL_3D, GIRO_RAPIDO_3D, SALTO_3D, GIRO_PLANO, BAMBOLEO,
-    GIGANTE, TERREMOTO, LENTO_RARO, BASICA, CAOS
+    GIGANTE, TERREMOTO, LENTO_RARO, BASICA, CAOS,
+    MONEDA, ESPIRAL, REBOTE_DOBLE, TORBELLINO
 }
 
 private fun estilosPara(nivel: Int): List<EstiloDado> {
-    val lista = mutableListOf(EstiloDado.NORMAL_3D, EstiloDado.GIRO_RAPIDO_3D)
-    if (nivel >= 2) { lista += EstiloDado.SALTO_3D; lista += EstiloDado.BAMBOLEO }
-    if (nivel >= 4) { lista += EstiloDado.GIRO_PLANO; lista += EstiloDado.GIGANTE; lista += EstiloDado.TERREMOTO }
+    val lista = mutableListOf(EstiloDado.NORMAL_3D, EstiloDado.GIRO_RAPIDO_3D, EstiloDado.MONEDA)
+    if (nivel >= 2) { lista += EstiloDado.SALTO_3D; lista += EstiloDado.BAMBOLEO; lista += EstiloDado.ESPIRAL; lista += EstiloDado.REBOTE_DOBLE }
+    if (nivel >= 4) { lista += EstiloDado.GIRO_PLANO; lista += EstiloDado.GIGANTE; lista += EstiloDado.TERREMOTO; lista += EstiloDado.TORBELLINO }
     if (nivel >= 7) { lista += EstiloDado.LENTO_RARO; lista += EstiloDado.BASICA; lista += EstiloDado.CAOS }
     return lista
 }
@@ -602,7 +549,8 @@ fun DadoGigante(
     valorFinal: Int,
     lanzamientoId: Int,
     variante: Int,
-    nivelLocura: Int
+    nivelLocura: Int,
+    onAnimacionTerminada: () -> Unit = {}
 ) {
     var valorMostrado by remember(valorFinal) { mutableIntStateOf(valorFinal) }
 
@@ -615,11 +563,13 @@ fun DadoGigante(
     val escalaY = remember { Animatable(1f) }
     val transX = remember { Animatable(0f) }
     val transY = remember { Animatable(0f) }
+    val pulsoTres = remember { Animatable(0f) }  // 0..1, brilla cuando el dado muestra 3
 
     val delayInicial = variante * 70L
 
     LaunchedEffect(lanzamientoId) {
         if (lanzamientoId <= 0) return@LaunchedEffect
+        pulsoTres.snapTo(0f)
         delay(delayInicial)
 
         ax.snapTo(0f); ay.snapTo(0f); az.snapTo(0f)
@@ -725,6 +675,57 @@ fun DadoGigante(
                     }
                     delay(760)
                 }
+                EstiloDado.MONEDA -> {
+                    // Lanzamiento alto girando como una moneda (eje X)
+                    launch { transY.animateTo(-220f, tween(380, easing = LinearOutSlowInEasing)) }
+                    launch { ax.animateTo(rndGiro(1800f), tween(760, easing = FastOutSlowInEasing)) }
+                    launch { escala.animateTo(1.28f, tween(380)) }
+                    delay(380)
+                    launch { escala.animateTo(1f, tween(380)) }
+                    transY.animateTo(0f, tween(380, easing = FastOutLinearInEasing))
+                }
+                EstiloDado.ESPIRAL -> {
+                    // Sube girando en Y mientras oscila en X como un espiral
+                    launch { transY.animateTo(-170f, tween(340, easing = LinearOutSlowInEasing)) }
+                    launch { ay.animateTo(rndGiro(1440f), tween(700, easing = FastOutSlowInEasing)) }
+                    launch { az.animateTo(rndGiro(270f), tween(700, easing = FastOutSlowInEasing)) }
+                    launch {
+                        delay(80)
+                        repeat(5) { i ->
+                            val sign = if (i % 2 == 0) 1f else -1f
+                            transX.animateTo(sign * 45f * (1f - i / 5f), tween(110))
+                        }
+                        transX.animateTo(0f, tween(110))
+                    }
+                    delay(340)
+                    transY.animateTo(0f, tween(360, easing = FastOutLinearInEasing))
+                }
+                EstiloDado.REBOTE_DOBLE -> {
+                    // Primer bote alto
+                    launch { transY.animateTo(-160f, tween(260, easing = LinearOutSlowInEasing)) }
+                    launch { ax.animateTo(rndGiro(720f), tween(520, easing = FastOutSlowInEasing)) }
+                    launch { ay.animateTo(rndGiro(540f), tween(520, easing = FastOutSlowInEasing)) }
+                    delay(260)
+                    transY.animateTo(0f, tween(190, easing = FastOutLinearInEasing))
+                    delay(20)
+                    // Segundo bote más pequeño
+                    launch { transY.animateTo(-75f, tween(170, easing = LinearOutSlowInEasing)) }
+                    launch { ax.animateTo(rndGiro(900f), tween(350, easing = FastOutSlowInEasing)) }
+                    launch { ay.animateTo(rndGiro(720f), tween(350, easing = FastOutSlowInEasing)) }
+                    delay(170)
+                    transY.animateTo(0f, tween(180, easing = FastOutLinearInEasing))
+                }
+                EstiloDado.TORBELLINO -> {
+                    // Giro rapidísimo en Y que frena de golpe
+                    launch { ay.animateTo(rndGiro(3600f), tween(900, easing = FastOutSlowInEasing)) }
+                    launch { transY.animateTo(-70f, tween(300)) }
+                    launch { escala.animateTo(0.78f, tween(450)) }
+                    delay(300)
+                    launch { transY.animateTo(0f, tween(300)) }
+                    delay(200)
+                    escala.animateTo(1.12f, tween(220, easing = FastOutSlowInEasing))
+                    escala.animateTo(1f, tween(200))
+                }
             }
 
             cycle.cancel()
@@ -743,10 +744,31 @@ fun DadoGigante(
                 launch { escalaY.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)) }
             }
         }
+
+        onAnimacionTerminada()
+
+        // Pulso rojo continuo cuando el dado muestra un 3
+        if (valorFinal == 3) {
+            pulsoTres.animateTo(1f, tween(350))
+            while (isActive) {
+                pulsoTres.animateTo(0.25f, tween(650, easing = FastOutSlowInEasing))
+                pulsoTres.animateTo(1f, tween(650, easing = FastOutSlowInEasing))
+            }
+        }
     }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         val lado = minOf(maxWidth, maxHeight) * 0.96f
+
+        // Aura roja cuando el dado muestra un 3
+        if (pulsoTres.value > 0f) {
+            Box(
+                modifier = Modifier
+                    .size(lado * 1.05f)
+                    .clip(RoundedCornerShape(50))
+                    .background(Color(1f, 0.15f, 0.25f, 0.52f * pulsoTres.value))
+            )
+        }
 
         // Sombra en la mesa
         Box(
@@ -765,6 +787,8 @@ fun DadoGigante(
                     translationY = transY.value
                     scaleX = escala.value * escalaX.value
                     scaleY = escala.value * escalaY.value
+                    clip = true
+                    shape = RoundedCornerShape(18.dp)
                 }
         ) {
             DadoCubo3D(
@@ -921,7 +945,6 @@ fun DadoCubo3D(
 
             val cara = caraRedondeada(arrayOf(p0, p1, p2, p3))
             drawPath(cara, color = colorCara)
-            drawPath(cara, color = Color(0x33000000), style = Stroke(width = 2.5f))
 
             // Puntos negros de esta cara, mapeados con UV bilineal
             val tl = CARAS[i][0]; val tr = CARAS[i][1]; val bl = CARAS[i][3]
